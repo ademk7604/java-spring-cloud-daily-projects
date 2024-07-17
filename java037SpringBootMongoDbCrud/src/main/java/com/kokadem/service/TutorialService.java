@@ -7,7 +7,6 @@ import com.kokadem.repository.TutorialRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientResponseException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,40 +21,32 @@ public class TutorialService {
         this.tutorialRepository = tutorialRepository;
     }
 
-    public ResponseEntity<List<Tutorial>> getTutorials(String title) throws ResourceNotFoundException {
-        try{
-            List<Tutorial> tutorials = new ArrayList<>();
+    public List<Tutorial> getTutorials(String title) throws ResourceNotFoundException {
 
+            List<Tutorial> tutorials = new ArrayList<>();
             if(title ==null){
                 tutorialRepository.findAll().forEach(tutorials::add);
             }else{
                 tutorialRepository.findByTitleContaining(title).forEach(tutorials::add);
             }
-
+        //en sonunda liste kontrolunu yapmam grekir
             if(tutorials.isEmpty()){
-                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+                throw new ResourceNotFoundException(String.format(ErrorMessage.TITLE_NOT_FOUND,title));
             }
-            return  ResponseEntity.ok(tutorials);
-
-        }catch(Exception e){
-            throw new ResourceNotFoundException(String.format(ErrorMessage.TITLE_NOT_FOUND,title));
-        }
+            return  tutorials;
     }
 
-
-    public ResponseEntity<Tutorial> getTutorialById(String id) throws ResourceNotFoundException {
+    public Optional<Tutorial> getTutorialById(String id) throws ResourceNotFoundException {
 
         Optional<Tutorial> tutorialData = Optional.ofNullable(tutorialRepository.findById(Long.valueOf(id)).orElseThrow(
                 () -> new ResourceNotFoundException(String.format(ErrorMessage.RESOURCE_NOT_FOUND, id))));
 
-        if(tutorialData.isPresent()){
-            return new ResponseEntity<>(tutorialData.get(), HttpStatus.OK);
-        }else{
+        if (tutorialData.isPresent()) {
+            return Optional.of(tutorialData.get());
+        } else {
             throw new ResourceNotFoundException(String.format(ErrorMessage.RESOURCE_NOT_FOUND, id));
         }
-
     }
-
 
     public ResponseEntity<Tutorial> createTutorial(Tutorial tutorial) throws ResourceNotFoundException {
         try {
@@ -66,11 +57,40 @@ public class TutorialService {
         }
     }
 
+    public ResponseEntity<Tutorial> updateTutorial(String id, Tutorial tutorial) throws ResourceNotFoundException {
+        Optional<Tutorial> oldTutorial =getTutorialById(id);
+        if(oldTutorial.isPresent()) {
+            Tutorial newTutorial = oldTutorial.get();
+            newTutorial.setTitle(tutorial.getTitle());
+            newTutorial.setDescription(tutorial.getDescription());
+            newTutorial.setPublished(tutorial.isPublished());
+            return  new ResponseEntity<>(tutorialRepository.save(newTutorial), HttpStatus.OK);
+        }else{
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
 
-//    public ResponseEntity<Tutorial> updateTutorial(String id, Tutorial newTutorial) throws ResourceNotFoundException {
-//        Optional<Tutorial> oldTutorial =getTutorialById(id);
-//
-//
-//
-//    }
+    public void deleteTutorial(String id) throws ResourceNotFoundException {
+        Long tutorialId = Long.valueOf(id);
+        if (!tutorialRepository.existsById(tutorialId)) {
+            throw new ResourceNotFoundException(String.format(ErrorMessage.RESOURCE_NOT_FOUND, id));
+        }
+        tutorialRepository.deleteById(tutorialId);
+    }
+
+    public void deleteTutorials() throws ResourceNotFoundException {
+        if(tutorialRepository.count() == 0)
+            throw new ResourceNotFoundException(String.format(ErrorMessage.TUTORIAL_NOT_FOUND));
+
+        tutorialRepository.deleteAll();
+    }
+
+    public List<Tutorial> findByPublished() throws ResourceNotFoundException {
+        List<Tutorial> tutorialList = tutorialRepository.findByPublished(true);
+        if(tutorialList.isEmpty()) {
+            throw new ResourceNotFoundException(String.format(ErrorMessage.TUTORIAL_NOT_FOUND));
+        }
+        return tutorialList;
+    }
+
 }
