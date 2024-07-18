@@ -38,7 +38,7 @@ public class TutorialService {
 
     public Optional<Tutorial> getTutorialById(String id) throws ResourceNotFoundException {
 
-        Optional<Tutorial> tutorialData = Optional.ofNullable(tutorialRepository.findById(Long.valueOf(id)).orElseThrow(
+        Optional<Tutorial> tutorialData = Optional.ofNullable(tutorialRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(String.format(ErrorMessage.RESOURCE_NOT_FOUND, id))));
 
         if (tutorialData.isPresent()) {
@@ -71,11 +71,11 @@ public class TutorialService {
     }
 
     public void deleteTutorial(String id) throws ResourceNotFoundException {
-        Long tutorialId = Long.valueOf(id);
-        if (!tutorialRepository.existsById(tutorialId)) {
+
+        if (!tutorialRepository.existsById(id)) {
             throw new ResourceNotFoundException(String.format(ErrorMessage.RESOURCE_NOT_FOUND, id));
         }
-        tutorialRepository.deleteById(tutorialId);
+        tutorialRepository.deleteById(id);
     }
 
     public void deleteTutorials() throws ResourceNotFoundException {
